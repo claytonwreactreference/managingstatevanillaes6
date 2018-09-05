@@ -36,6 +36,7 @@
         const ADD_GOAL = 'ADD_GOAL';
         const REMOVE_GOAL = 'REMOVE_GOAL';
 
+        //Action creators
         function addTodoAction (todo) {
             return {
                 type: ADD_TODO,
@@ -70,6 +71,7 @@
                 id,
             };
         }
+        
 
         function todos (state = [], action) {
             switch(action.type){
@@ -96,6 +98,7 @@
             };
         }
         
+        //Middleware 
         const checker = (store) => (next) => (action) => {
             if (
                 action.type === ADD_TODO &&
@@ -114,13 +117,22 @@
             return next(action)
         }
 
+        const logger = (store) => (next) => (action) => {
+            console.group(action.type)
+                console.log('The action: ', action);
+                const result = next(action)
+                console.log('The new state: ', store.getState())
+            console.groupEnd();
+            return result;    
+        }
+
         const store = Redux.createStore(Redux.combineReducers({
             todos,
             goals
-        }), Redux.applyMiddleware(checker));
+        }), Redux.applyMiddleware(checker, logger));
 
         store.subscribe(() => {
-            console.log('The new state is: ', store.getState());
+            //console.log('The new state is: ', store.getState());
             const { goals, todos } = store.getState();
 
             document.getElementById('todos').innerHTML = '';
