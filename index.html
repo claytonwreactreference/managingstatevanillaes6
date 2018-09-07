@@ -8,7 +8,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/redux/3.7.2/redux.min.js"></script>
     <script src="https://unpkg.com/react@16.3.0-alpha.1/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@16.3.0-alpha.1/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/babel-standalone@6.15.0/babel.min.js"></script>  
+    <script src="https://unpkg.com/babel-standalone@6.15.0/babel.min.js"></script>
+    <script src="https://tylermcginnis.com/goals-todos-api/index.js"></script>  
 </head>
 <body>
     <!-- <div>
@@ -37,6 +38,7 @@
         const TOGGLE_TODO = 'TOGGLE_TODO';
         const ADD_GOAL = 'ADD_GOAL';
         const REMOVE_GOAL = 'REMOVE_GOAL';
+        const RECEIVE_DATA = 'RECEIVE_DATA';
 
         //Action creators
         function addTodoAction (todo) {
@@ -73,6 +75,14 @@
                 id,
             };
         }
+
+        function receiveDataAction (todos, goals) {
+            return {
+                type: RECEIVE_DATA,
+                todos,
+                goals,
+            }
+        }
         
 
         function todos (state = [], action) {
@@ -83,7 +93,9 @@
                     return state.filter((todo) => todo.id !== action.id ); 
                 case TOGGLE_TODO :
                     return state.map((todo) => todo.id !== action.id ? todo : 
-                    Object.assign({}, todo, { complete: !todo.complete }));  
+                    Object.assign({}, todo, { complete: !todo.complete })); 
+                case RECEIVE_DATA : 
+                    return action.todos;
                 default:
                     return state;        
             };
@@ -95,9 +107,20 @@
                     return state.concat([action.goal]);
                 case REMOVE_GOAL :
                     return state.filter((goal) => goal.id !== action.id );
+                case RECEIVE_DATA : 
+                    return action.goals;
                 default:
                     return state ; 
             };
+        }
+
+        function loading (state = true, action) {
+            switch(action.type) {
+                case RECEIVE_DATA :
+                    return false
+                default :
+                    return state    
+            }
         }
         
         //Middleware 
@@ -130,90 +153,9 @@
 
         const store = Redux.createStore(Redux.combineReducers({
             todos,
-            goals
+            goals,
+            loading,
         }), Redux.applyMiddleware(checker, logger));
-
-        // store.subscribe(() => {
-        //     //console.log('The new state is: ', store.getState());
-        //     const { goals, todos } = store.getState();
-
-        //     document.getElementById('todos').innerHTML = '';
-        //     document.getElementById('goals').innerHTML = '';
-
-        //     todos.forEach(todo => addTodoToDOM(todo));
-        //     goals.forEach(goal => addGoalToDOM(goal));
-        // })
-
-        // //DOM code    
-        // function addTodo () {
-        //     const input = document.getElementById('todo');
-        //     const name = input.value;
-        //     input.value = '';
-
-        //     store.dispatch(addTodoAction({
-        //         id: generateId(),
-        //         name,
-        //         complete: false,
-        //     }));
-        // }
-
-        // function addGoal() {
-        //     const input = document.getElementById('goal');
-        //     const name = input.value;
-        //     input.value = '';
-
-        //     store.dispatch(addGoalAction({
-        //         id: generateId(),
-        //         name,
-        //     }));
-        // }
-
-        // document.getElementById('todoBtn')
-        // .addEventListener('click', addTodo);
-
-        // document.getElementById('goalBtn')
-        // .addEventListener('click', addGoal);
-
-        // function createRemoveButton (onClick) {
-        //     const removeBtn = document.createElement('button')
-        //     removeBtn.innerHTML = 'X'
-        //     removeBtn.addEventListener('click', onClick)
-        //     return removeBtn
-        // }
-
-        // function addTodoToDOM (todo) {
-        //     const node = document.createElement('li');
-        //     const text = document.createTextNode(todo.name);
-
-        //     const removeBtn = createRemoveButton(() => {
-        //         store.dispatch(removeTodoAction(todo.id));
-        //     })
-
-        //     node.appendChild(text);
-        //     node.appendChild(removeBtn);
-        //     node.style.textDecoration = todo.complete ? 'line-through' : 'none';
-        //     node.addEventListener('click', () => {
-        //         store.dispatch(toggleTodoAction(todo.id))
-        //     })
-
-        //     document.getElementById('todos')
-        //         .appendChild(node);
-        // }
-
-        // function addGoalToDOM (goal) {
-        //     const node = document.createElement('li')
-        //     const text = document.createTextNode(goal.name)
-
-        //     const removeBtn = createRemoveButton(() => {
-        //         store.dispatch(removeGoalAction(goal.id))
-        //     })
-
-        //     node.appendChild(text)
-        //     node.appendChild(removeBtn);
-    
-        //     document.getElementById('goals')
-        //         .appendChild(node);
-        // }
 
     </script> 
     <script type='text/babel'>
@@ -318,11 +260,22 @@
             componentDidMount () {
                 const { store } = this.props
 
+                Promise.all([
+                    API.fetchTodos(),
+                    API.fetchGoals()
+                ]).then(([ todos, goals ]) => {
+                    store.dispatch(receiveDataAction(todos, goals))
+                })
+
                 store.subscribe(() => this.forceUpdate())
             }
             render() {
                 const { store } = this.props
-                const { todos, goals } = store.getState()
+                const { todos, goals, loading } = store.getState()
+
+                if(loading === true) {
+                    return <h3>Loading</h3>
+                }
 
                 return (
                     <div>
